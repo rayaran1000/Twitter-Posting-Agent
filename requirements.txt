@@ -1,5 +1,9 @@
-langchain-grok
 tweepy
 python-dotenv
 apscheduler
 tavily-python
+newsapi-python
+supabase
+streamlit
+pandas
+plotly
