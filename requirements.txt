@@ -2,8 +2,14 @@ tweepy
 python-dotenv
 apscheduler
 tavily-python
-newsapi-python
 supabase
 streamlit
 pandas
 plotly
+langchain
+langchain-community
+asknews
+requests
+wikipedia 
+langchain-groq
+pydantic
