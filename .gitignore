@@ -175,3 +175,5 @@ cython_debug/
 
 twitter/*
 .env
+model_cache/*
+chroma_db/*
