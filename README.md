@@ -1,6 +1,6 @@
 # Twitter Posting Agent
 
-![Image](https://github.com/user-attachments/assets/5f651884-3166-4e58-9863-f21c7d28992c)
+![Image](https://github.com/user-attachments/assets/0d2f4d67-9582-4f56-adce-0f2739eb0546)
 
 ## Project Overview
 
@@ -40,6 +40,11 @@ Create a `.env` file with:
 TWITTER_API_KEY=<your-twitter-api-key>
 TWITTER_API_SECRET=<your-twitter-api-secret>
 GROQ_API_KEY=<your-groq-key>
+TWITTER_ACCESS_TOKEN=<your-twitter-access-token>
+TWITTER_ACCESS_SECRET=<your-twitter-access-secret>
+MEDIASTACK_API_KEY=<your-mediastack-api-key>
+SUPABASE_URL=<your-supabase-url>
+SUPABASE_KEY=<your-supabase-key>
 ```
 
 ### Local Development Setup
@@ -63,24 +68,6 @@ pip install -r requirements.txt
 streamlit run twitter_agent.py
 ```
 
-### Docker Deployment
-
-```bash
-docker-compose up --build
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /users/token`: Get access token.
-- `POST /users/register`: Register new user.
-- `POST /users/login`: Login existing user.
-
-### Tweet Management
-- `POST /tweets/generate`: Generate a new tweet.
-- `POST /tweets/schedule`: Schedule a tweet for future posting.
-- `POST /tweets/post`: Post a tweet immediately.
-
 ## Technologies Used
 
 ### Backend
@@ -93,15 +80,8 @@ docker-compose up --build
 - Streamlit
 
 ### Infrastructure
-- Docker
 - GitHub (for version control)
 
-## Security
-
-- JWT-based authentication
-- Role-based access control
-- Secure password hashing
-- Environment variable protection
 
 ## Contributing
 
