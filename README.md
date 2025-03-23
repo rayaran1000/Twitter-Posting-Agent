@@ -8,7 +8,6 @@
 
 ## Features
 
-- **User Authentication**: Secure JWT-based authentication system with role-based access control.
 - **Tweet Generation & Management**: Automated tweet generation using AI models with support for scheduling and manual posting.
 - **Data Integration**: Integration with news and Wikipedia for context-rich tweets.
 - **Document Processing**: Supports document processing and context retrieval using local vector databases and Hugging Face embeddings.
