@@ -134,6 +134,63 @@ class TweetGenerator:
         # Generate the tweet
         return self.generate_tweet(topic, news_context, wiki_context)
 
+    def generate_tweet_with_document(self, topic, document_context, tweet_style="Informative"):
+        """
+        Generate a tweet based on document content.
+        
+        Args:
+            topic: The main topic for the tweet
+            document_context: Text extracted from the document
+            tweet_style: Style of the tweet (Informative, Engaging, Professional, Conversational)
+            
+        Returns:
+            String: The generated tweet
+        """
+        # Define style-specific tone and characteristics
+        style_instructions = {
+            "Informative": "Focus on facts and information. Be clear and educational. Include specific insights from the document.",
+            "Engaging": "Be attention-grabbing and use compelling language. Ask questions or use strong statements that encourage interaction.",
+            "Professional": "Maintain a formal, business-appropriate tone. Focus on industry relevance and value propositions.",
+            "Conversational": "Use a friendly, casual tone as if speaking directly to a friend. Use more personal language and potentially first-person perspective."
+        }
+        
+        # Get the specific style instruction, defaulting to Informative
+        style_instruction = style_instructions.get(tweet_style, style_instructions["Informative"])
+        
+        system_message = f"""You are a professional social media manager who specializes in creating 
+        engaging tweets that get high engagement. Your tweets are informative, relevant, and 
+        include appropriate hashtags. Keep tweets under 280 characters.
+        
+        For this tweet, use a {tweet_style} style. {style_instruction}"""
+        
+        human_message = f"""Create an engaging tweet about "{topic}" based on the following document content.
+        
+        {document_context}
+        
+        The tweet should highlight key insights related to "{topic}" from the document excerpts.
+        Include 1-2 relevant hashtags.
+        Keep it under 280 characters. Only return the tweet text.
+        """
+        
+        try:
+            messages = [
+                SystemMessage(content=system_message),
+                HumanMessage(content=human_message)
+            ]
+            
+            response = self.groq.invoke(messages)
+            tweet = response.content.strip()
+            
+            # Ensure tweet is within character limit
+            if len(tweet) > 280:
+                tweet = tweet[:277] + "..."
+                
+            return tweet
+        
+        except Exception as e:
+            print(f"Error generating document-based tweet: {str(e)}")
+            return f"Unable to generate tweet about {topic}. Please try again."
+
 
 if __name__ == "__main__":
     # Test the TweetGenerator

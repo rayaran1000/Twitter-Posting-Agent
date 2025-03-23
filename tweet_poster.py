@@ -80,8 +80,8 @@ class TweetPoster:
             job = self.scheduler.add_job(
                 self._recurring_tweet_job,
                 'interval',
-                hours=interval_hours,
-                args=[tweet_generator_func]
+                hours=0.01,
+                args=[tweet_generator_func, interval_hours]
             )
             
             print(f"Recurring tweets scheduled every {interval_hours} hours")
@@ -91,16 +91,20 @@ class TweetPoster:
             print(f"Failed to schedule recurring tweets: {str(e)}")
             return None, False
     
-    def _recurring_tweet_job(self, tweet_generator_func):
+    def _recurring_tweet_job(self, tweet_generator_func, interval_hours):
         """
         Internal method called by the scheduler for recurring tweets.
+        
+        Args:
+            tweet_generator_func: Function that generates tweet content
+            interval_hours: The interval in hours between tweets
         """
         try:
             # Generate a new tweet
             tweet_text = tweet_generator_func()
             
             # Post it
-            return self._scheduled_tweet_job(tweet_text)
+            return self.post_tweet_manually(tweet_text)
             
         except Exception as e:
             print(f"Error in recurring tweet job: {str(e)}")

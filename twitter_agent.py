@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import time
 from tweet_generator import TweetGenerator
 from tweet_poster import TweetPoster
+from document_handler import DocumentHandler
 
 # Page config and title
 st.set_page_config(
@@ -28,9 +29,14 @@ def get_wiki_fetcher():
 def get_tweet_generator():
     return TweetGenerator()
 
+@st.cache_resource
+def get_document_handler():
+    return DocumentHandler()
+
 news_handler = get_news_handler()
 wiki_fetcher = get_wiki_fetcher()
 tweet_generator = get_tweet_generator()
+document_handler = get_document_handler()
 
 # Sidebar for controls
 st.sidebar.title("Twitter Posting Agent")
@@ -83,6 +89,21 @@ if 'next_tweet_time' not in st.session_state:
 
 if 'job_id' not in st.session_state:
     st.session_state.job_id = None
+
+if 'document_uploaded' not in st.session_state:
+    st.session_state.document_uploaded = False
+
+if 'document_id' not in st.session_state:
+    st.session_state.document_id = None
+
+if 'document_name' not in st.session_state:
+    st.session_state.document_name = ""
+
+if 'document_chunks' not in st.session_state:
+    st.session_state.document_chunks = []
+
+if 'document_enhanced' not in st.session_state:
+    st.session_state.document_enhanced = False
 
 def on_schedule_tweet_click():
     st.session_state.scheduled_tweet = True
@@ -150,33 +171,48 @@ def on_schedule_start_click():
         return
     
     try:
-        # Initialize the tweet poster
         tweet_poster = TweetPoster()
+        hours_to_schedule = st.session_state.hours_to_schedule
+        
+        # Capture all session state variables we need
+        current_topic = st.session_state.current_topic
+        document_enhanced = st.session_state.get("document_enhanced", False)
+        document_uploaded = st.session_state.get("document_uploaded", False)
+        document_id = st.session_state.get("document_id", None)
+        include_news = st.session_state.get("include_news", False)
+        include_wiki = st.session_state.get("include_wiki", False)
         
         # Define a function that will return our tweet text
         def tweet_generator_func():
             # Update the next tweet time when a tweet is posted
             now = datetime.now()
-            st.session_state.next_tweet_time = now + timedelta(hours=st.session_state.hours_to_schedule)
+            st.session_state.next_tweet_time = now + timedelta(hours=hours_to_schedule)
             
-            return tweet_generator.generate_tweet_with_contexts(
-                st.session_state.current_topic, 
-                include_news=st.session_state.include_news, 
-                include_wiki=st.session_state.include_wiki, 
-                news_handler=news_handler, 
-                wiki_fetcher=wiki_fetcher
-            )
+            # Use captured variables instead of session state
+            if document_enhanced and document_uploaded and document_id:
+                return tweet_generator.generate_tweet_with_document(
+                    current_topic,
+                    document_handler.get_document_context(document_id)
+                )
+            else:
+                return tweet_generator.generate_tweet_with_contexts(
+                    current_topic, 
+                    include_news=include_news, 
+                    include_wiki=include_wiki, 
+                    news_handler=news_handler, 
+                    wiki_fetcher=wiki_fetcher
+                )
         
-        # Schedule recurring tweets
+        # Schedule recurring tweets with the hours value
         job_id, success = tweet_poster.schedule_recurring_tweets(
             tweet_generator_func=tweet_generator_func,
-            interval_hours=st.session_state.hours_to_schedule
+            interval_hours=hours_to_schedule
         )
         
         if success:
             # Set the next tweet time
             now = datetime.now()
-            st.session_state.next_tweet_time = now + timedelta(hours=st.session_state.hours_to_schedule)
+            st.session_state.next_tweet_time = now + timedelta(hours=hours_to_schedule)
             
             # Store the job ID for later stopping
             st.session_state.job_id = job_id
@@ -184,7 +220,7 @@ def on_schedule_start_click():
             # Update the state to show we have an active scheduler
             st.session_state.scheduler_active = True
             
-            st.sidebar.success(f"Tweet scheduler started! First tweet will post in {st.session_state.hours_to_schedule} hours, then every {st.session_state.hours_to_schedule} hours after that.")
+            st.sidebar.success(f"Tweet scheduler started! First tweet will post in {hours_to_schedule} hours, then every {hours_to_schedule} hours after that.")
             
             # Reset scheduling mode after success
             st.session_state.scheduling_mode = False
@@ -306,11 +342,57 @@ tweet_news = st.sidebar.checkbox("Latest News enhanced", value=st.session_state.
 # Wikipedia Facts enhanced button
 wiki_facts = st.sidebar.checkbox("Wikipedia Facts enhanced", value=st.session_state.wiki_facts, key='wiki_facts')
 
+# Document enhanced button
+document_enhanced = st.sidebar.checkbox("Document enhanced", value=st.session_state.document_enhanced, key='document_enhanced')
+
+# Add document uploader in sidebar
+if document_enhanced:
+    st.sidebar.markdown("### Document Settings")
+
+    # If document enhanced is selected, disable other enhancement options
+    if document_enhanced:
+
+        # Hide the checkboxes for News and Wikipedia when document is selected
+        if 'tweet_news' in st.session_state:
+            del st.session_state.tweet_news
+        if 'wiki_facts' in st.session_state:
+            del st.session_state.wiki_facts
+    
+    # File uploader
+    uploaded_file = st.sidebar.file_uploader(
+        "Upload PDF or Word document",
+        type=["pdf", "docx", "doc"],
+        help="Upload a document to generate tweets from"
+    )
+    
+    # Process the uploaded document
+    if uploaded_file is not None and not st.session_state.document_uploaded:
+        with st.spinner("Processing document..."):
+            # Process document
+            document_id, text_chunks = document_handler.process_document(uploaded_file)
+            
+            if text_chunks:
+                # Store in session state
+                st.session_state.document_chunks = text_chunks
+                st.session_state.document_id = document_id
+                st.session_state.document_uploaded = True
+                st.session_state.document_name = uploaded_file.name
+                
+                st.sidebar.success(f"Document '{uploaded_file.name}' processed successfully!")
+            else:
+                st.sidebar.error("Could not extract text from the document")
+                st.session_state.document_uploaded = False
+    
+    # Show document info if already uploaded
+    if st.session_state.document_uploaded:
+        st.sidebar.success(f"Using document: {st.session_state.document_name}")
+    
 # Show tweet button
 show_tweet = st.sidebar.button("Show tweet", on_click=on_show_tweet_click)
 
 # Post Tweet button
 post_tweet = st.sidebar.button("Post Tweet", on_click=on_tweet_post_click)
+
 
 # Replace your current conditional UI with this:
 if st.session_state.scheduler_active:
@@ -336,7 +418,8 @@ elif st.session_state.scheduling_mode:
     )
     
     # Show the Start Tweet Scheduler button
-    st.sidebar.button("Start Tweet Scheduler", on_click=on_schedule_start_click)
+    if st.sidebar.button("Start Tweet Scheduler"):
+        on_schedule_start_click()
 else:
     # Normal mode, show the Start Posting Agent button
     posting_agent = st.sidebar.button("Start Posting Agent", on_click=on_posting_agent_click)
@@ -348,6 +431,37 @@ if not show_tweet:
     st.info("This agent will create a tweet based on the topic you have selected and the enhancements you have selected.")
 
 if show_tweet:
+    if document_enhanced:
+        st.header("📄 Document Enhanced Mode")
+    
+        # Check if document has been uploaded
+        if not st.session_state.document_uploaded:
+            st.info("Please upload a document to generate tweets")
+            st.image("https://cdn-icons-png.flaticon.com/512/4208/4208479.png", width=100)
+        else:
+            st.info(f"Using document: '{st.session_state.document_name}'")
+        
+        # Generate the tweet
+        if st.session_state.document_uploaded:
+            with st.spinner("Generating tweet..."):
+                tweet_text = tweet_generator.generate_tweet_with_document(
+                    topic,
+                    document_handler.get_document_context(st.session_state.document_id)
+                )
+                st.session_state.current_tweet = tweet_text
+                st.session_state.current_topic = topic
+                st.session_state.include_news = False
+                st.session_state.include_wiki = False
+
+            st.subheader("The below tweet will be posted:")
+            
+            # Display the tweet
+            st.markdown(f"""
+            <div style="background-color: #f8f9fa; border: 1px solid #e1e8ed; border-radius: 12px; padding: 20px; font-family: sans-serif; color: #000000;">
+            {tweet_text}
+            </div>
+            """, unsafe_allow_html=True)
+
     if wiki_facts and tweet_news:
         st.header("📰 News and Wikipedia Facts Enhanced Mode")
         st.info("The agent will create tweets based on the latest news headlines and include interesting facts from Wikipedia.")
@@ -442,7 +556,7 @@ if show_tweet:
         with st.expander("Source"):
             display_wiki_facts(topic, use_expanders=False)
 
-    else:
+    elif not tweet_news and not wiki_facts and not document_enhanced:
         st.header("📰 Default Mode")
         st.info("The agent will create a tweet based on the topic you've selected without additional context.")
         
@@ -485,6 +599,7 @@ if st.session_state.scheduler_active and st.session_state.next_tweet_time:
         """,
         unsafe_allow_html=True
     )
+
 
 
 
