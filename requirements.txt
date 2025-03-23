@@ -13,3 +13,9 @@ requests
 wikipedia 
 langchain-groq
 pydantic
+langchain-pinecone
+langchain-huggingface 
+pinecone-client 
+sentence-transformers
+chromadb
+pypdf
