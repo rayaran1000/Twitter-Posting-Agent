@@ -1,5 +1,7 @@
 # Twitter Posting Agent
 
+![Image](https://github.com/user-attachments/assets/962b1a63-cd75-4aff-aa63-761347be5ac0)
+
 ## Table of Contents
 - [Introduction](#introduction)
 - [Features](#features)
