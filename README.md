@@ -1,58 +1,119 @@
 # Twitter Posting Agent
 
-![Image](https://github.com/user-attachments/assets/962b1a63-cd75-4aff-aa63-761347be5ac0)
+![Image](https://github.com/user-attachments/assets/5f651884-3166-4e58-9863-f21c7d28992c)
 
-## Table of Contents
-- [Introduction](#introduction)
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Components](#components)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+## Project Overview
 
-## Introduction
-The Twitter Posting Agent is an innovative tool designed to streamline and automate the process of generating and posting tweets. Leveraging advanced AI models, this application integrates seamlessly with various data sources, including news articles and Wikipedia, to craft informative and engaging content tailored for Twitter audiences. 
-
-With features that support both scheduled and manual tweet posting, the Twitter Posting Agent empowers users to maintain an active and dynamic social media presence effortlessly. Additionally, the tool includes robust document processing capabilities, enabling users to retrieve and utilize context from a variety of document formats, enhancing the depth and relevance of the generated tweets.
-
-Whether you're a social media manager looking to optimize your workflow or a developer interested in AI-driven content creation, the Twitter Posting Agent offers a comprehensive solution to meet your needs.
+**Twitter Posting Agent** is a web application designed to automate the process of generating and posting tweets. It integrates with various data sources to create informative and engaging content for Twitter. The application includes user authentication, tweet generation, scheduling capabilities, and advanced integration features.
 
 ## Features
-- Automated tweet generation using AI models.
-- Scheduled and manual tweet posting.
-- Integration with news and Wikipedia for context-rich tweets.
-- Document processing and context retrieval.
+
+- **User Authentication**: Secure JWT-based authentication system with role-based access control.
+- **Tweet Generation & Management**: Automated tweet generation using AI models with support for scheduling and manual posting.
+- **Data Integration**: Integration with news and Wikipedia for context-rich tweets.
+- **Document Processing**: Supports document processing and context retrieval using local vector databases and Hugging Face embeddings.
+- **Interactive Interface**: Built with Streamlit for a user-friendly web interface.
+
+## Project Structure
+
+### Backend (Python)
+- **Core Components**:
+  - `tweet_poster.py`: Handles the posting of tweets to Twitter using the Tweepy library.
+  - `twitter_agent.py`: Sets up the Streamlit interface and manages the interaction between different components.
+  - `tweet_generator.py`: Uses the ChatGroq language model to generate tweets based on various contexts.
+  - `document_handler.py`: Processes documents and retrieves context using a local vector database and Hugging Face embeddings.
+
+### Frontend (Streamlit)
+- Modern UI built with Streamlit.
+- Responsive design for various screen sizes.
 
 ## Installation
-1. Clone the repository.
-2. Install the required packages using `pip install -r requirements.txt`.
-3. Set up your environment variables in a `.env` file.
 
-## Usage
-- Run the application using Streamlit to access the web interface.
-- Use the interface to generate, schedule, and post tweets.
+### Prerequisites
+- Python 3.9+
+- Node.js (for any additional frontend development)
+- Docker (optional)
 
-## Components
+### Environment Variables
+Create a `.env` file with:
 
-### TweetPoster
-Located in `tweet_poster.py`, this class handles the posting of tweets to Twitter using the Tweepy library.
+```bash
+TWITTER_API_KEY=<your-twitter-api-key>
+TWITTER_API_SECRET=<your-twitter-api-secret>
+GROQ_API_KEY=<your-groq-key>
+```
 
-### TwitterAgent
-Found in `twitter_agent.py`, this script sets up the Streamlit interface and manages the interaction between different components.
+### Local Development Setup
 
-### TweetGenerator
-Defined in `tweet_generator.py`, this class uses the ChatGroq language model to generate tweets based on various contexts.
+1. Clone the repository:
 
-### DocumentHandler
-Implemented in `document_handler.py`, this class processes documents and retrieves context using a local vector database and Hugging Face embeddings.
+```bash
+git clone <repository-url>
+cd twitter-posting-agent
+```
+
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Run the application:
+
+```bash
+streamlit run twitter_agent.py
+```
+
+### Docker Deployment
+
+```bash
+docker-compose up --build
+```
+
+## API Endpoints
+
+### Authentication
+- `POST /users/token`: Get access token.
+- `POST /users/register`: Register new user.
+- `POST /users/login`: Login existing user.
+
+### Tweet Management
+- `POST /tweets/generate`: Generate a new tweet.
+- `POST /tweets/schedule`: Schedule a tweet for future posting.
+- `POST /tweets/post`: Post a tweet immediately.
+
+## Technologies Used
+
+### Backend
+- Python
+- Tweepy
+- Hugging Face
+- LangChain
+
+### Frontend
+- Streamlit
+
+### Infrastructure
+- Docker
+- GitHub (for version control)
+
+## Security
+
+- JWT-based authentication
+- Role-based access control
+- Secure password hashing
+- Environment variable protection
 
 ## Contributing
-Contributions are welcome! Please submit a pull request or open an issue for any bugs or feature requests.
+
+Please read our contributing guidelines before submitting pull requests.
 
 ## License
+
 This project is licensed under the MIT License.
 
-## Contact
-For any inquiries, please contact the project maintainers.
+## Acknowledgments
+
+- Tweepy library for Twitter API integration
+- Hugging Face for language models
+- Streamlit for the web interface
