@@ -6,6 +6,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import time
 from tweet_generator import TweetGenerator
+from tweet_poster import TweetPoster
 
 # Page config and title
 st.set_page_config(
@@ -53,16 +54,168 @@ if 'show_tweet' not in st.session_state:
 if 'show_news_headlines' not in st.session_state:
     st.session_state.show_news_headlines = False
 
+if 'current_tweet' not in st.session_state:
+    st.session_state.current_tweet = ""
+
+if 'current_topic' not in st.session_state:
+    st.session_state.current_topic = ""
+
+if 'scheduled_tweet' not in st.session_state:
+    st.session_state.scheduled_tweet = False
+
+if 'include_news' not in st.session_state:
+    st.session_state.include_news = True
+
+if 'include_wiki' not in st.session_state:
+    st.session_state.include_wiki = True
+
+if 'scheduling_mode' not in st.session_state:
+    st.session_state.scheduling_mode = False
+
+if 'hours_to_schedule' not in st.session_state:
+    st.session_state.hours_to_schedule = 2
+
+if 'scheduler_active' not in st.session_state:
+    st.session_state.scheduler_active = False
+
+if 'next_tweet_time' not in st.session_state:
+    st.session_state.next_tweet_time = None
+
+if 'job_id' not in st.session_state:
+    st.session_state.job_id = None
+
+def on_schedule_tweet_click():
+    st.session_state.scheduled_tweet = True
+
 # Define callback function for the "Start Posting Agent" button
 def on_posting_agent_click():
-    st.session_state.use_custom_topic = False
-    st.session_state.tweet_news = False
-    st.session_state.wiki_facts = False
-    if st.session_state.user_topics == []:
-        st.sidebar.error("Please select a topic first")
+    # Toggle scheduling mode
+    st.session_state.scheduling_mode = True
+    
+    # Don't clear settings here since we want to use the generated tweet
+    if not st.session_state.show_tweet:
+        st.sidebar.error("Please generate a tweet first by clicking 'Show tweet'")
+        st.session_state.scheduling_mode = False
         return
+    
+    if not st.session_state.current_tweet:
+        st.sidebar.error("No tweet has been generated yet")
+        st.session_state.scheduling_mode = False
+        return
+
+def on_stop_scheduler_click():
+    if st.session_state.job_id:
+        try:
+            # Initialize the tweet poster
+            tweet_poster = TweetPoster()
+            
+            # Stop the scheduler
+            success = tweet_poster.stop_scheduler(st.session_state.job_id)
+            
+            if success:
+                st.sidebar.success("Tweet scheduler stopped successfully.")
+                st.session_state.scheduler_active = False
+                st.session_state.next_tweet_time = None
+                st.session_state.job_id = None
+            else:
+                st.sidebar.error("Failed to stop scheduler. Check console for details.")
+        except Exception as e:
+            st.sidebar.error(f"Error stopping scheduler: {str(e)}")
     else:
-        st.sidebar.success("Posting agent started")
+        st.sidebar.warning("No active scheduler to stop.")
+
+def format_time_remaining(target_time):
+    """Format the time remaining until target_time in a readable format."""
+    now = datetime.now()
+    time_diff = target_time - now
+    
+    # Handle case where target time is in the past
+    if time_diff.total_seconds() <= 0:
+        return "Due any moment now"
+    
+    # Extract hours, minutes, seconds
+    hours, remainder = divmod(time_diff.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    
+    # Format
+    if time_diff.days > 0:
+        return f"{time_diff.days}d {hours}h {minutes}m {seconds}s"
+    else:
+        return f"{hours}h {minutes}m {seconds}s"
+    
+# Add a new function for when the scheduler starts
+def on_schedule_start_click():
+    if not st.session_state.current_tweet:
+        st.sidebar.error("No tweet has been generated yet")
+        return
+    
+    try:
+        # Initialize the tweet poster
+        tweet_poster = TweetPoster()
+        
+        # Define a function that will return our tweet text
+        def tweet_generator_func():
+            # Update the next tweet time when a tweet is posted
+            now = datetime.now()
+            st.session_state.next_tweet_time = now + timedelta(hours=st.session_state.hours_to_schedule)
+            
+            return tweet_generator.generate_tweet_with_contexts(
+                st.session_state.current_topic, 
+                include_news=st.session_state.include_news, 
+                include_wiki=st.session_state.include_wiki, 
+                news_handler=news_handler, 
+                wiki_fetcher=wiki_fetcher
+            )
+        
+        # Schedule recurring tweets
+        job_id, success = tweet_poster.schedule_recurring_tweets(
+            tweet_generator_func=tweet_generator_func,
+            interval_hours=st.session_state.hours_to_schedule
+        )
+        
+        if success:
+            # Set the next tweet time
+            now = datetime.now()
+            st.session_state.next_tweet_time = now + timedelta(hours=st.session_state.hours_to_schedule)
+            
+            # Store the job ID for later stopping
+            st.session_state.job_id = job_id
+            
+            # Update the state to show we have an active scheduler
+            st.session_state.scheduler_active = True
+            
+            st.sidebar.success(f"Tweet scheduler started! First tweet will post in {st.session_state.hours_to_schedule} hours, then every {st.session_state.hours_to_schedule} hours after that.")
+            
+            # Reset scheduling mode after success
+            st.session_state.scheduling_mode = False
+        else:
+            st.sidebar.error("Failed to schedule tweets. Check console for details.")
+    except Exception as e:
+        st.sidebar.error(f"Error scheduling tweets: {str(e)}")
+
+def on_tweet_post_click():
+    # Don't clear settings here since we want to use the generated tweet
+    if not st.session_state.show_tweet:
+        st.sidebar.error("Please generate a tweet first by clicking 'Show tweet'")
+        return
+    
+    if not st.session_state.current_tweet:
+        st.sidebar.error("No tweet has been generated yet")
+        return
+    
+    try:
+        # Initialize the tweet poster
+        tweet_poster = TweetPoster()
+        
+        # Post the tweet stored in session state
+        success = tweet_poster.post_tweet_manually(st.session_state.current_tweet)
+        
+        if success:
+            st.sidebar.success("Tweet posted successfully!")
+        else:
+            st.sidebar.error("Failed to post tweet. Check console for details.")
+    except Exception as e:
+        st.sidebar.error(f"Error posting tweet: {str(e)}")
 
 def on_show_tweet_click():
     st.session_state.show_tweet = True
@@ -156,8 +309,37 @@ wiki_facts = st.sidebar.checkbox("Wikipedia Facts enhanced", value=st.session_st
 # Show tweet button
 show_tweet = st.sidebar.button("Show tweet", on_click=on_show_tweet_click)
 
-# Posting Agent start button
-posting_agent = st.sidebar.button("Start Posting Agent", on_click=on_posting_agent_click)
+# Post Tweet button
+post_tweet = st.sidebar.button("Post Tweet", on_click=on_tweet_post_click)
+
+# Replace your current conditional UI with this:
+if st.session_state.scheduler_active:
+    # Display active scheduler status with time remaining
+    st.sidebar.subheader("Tweet Scheduler Active")
+    
+    if st.session_state.next_tweet_time:
+        time_remaining = format_time_remaining(st.session_state.next_tweet_time)
+        st.sidebar.info(f"Next tweet in: {time_remaining}")
+    
+    # Add a button to stop the scheduler
+    st.sidebar.button("Stop Scheduler", on_click=on_stop_scheduler_click)
+    
+elif st.session_state.scheduling_mode:
+    # We're in scheduling mode, show the slider and Start Tweet Scheduler button
+    st.sidebar.subheader("Schedule Settings")
+    st.session_state.hours_to_schedule = st.sidebar.slider(
+        "Post tweets every X hours:", 
+        min_value=1, 
+        max_value=24, 
+        value=2,
+        step=1
+    )
+    
+    # Show the Start Tweet Scheduler button
+    st.sidebar.button("Start Tweet Scheduler", on_click=on_schedule_start_click)
+else:
+    # Normal mode, show the Start Posting Agent button
+    posting_agent = st.sidebar.button("Start Posting Agent", on_click=on_posting_agent_click)
 
 # Main content section
 st.title("Twitter Posting Agent")
@@ -179,6 +361,10 @@ if show_tweet:
                 news_handler=news_handler,
                 wiki_fetcher=wiki_fetcher
             )
+            st.session_state.current_tweet = tweet_text
+            st.session_state.current_topic = topic
+            st.session_state.include_news = True
+            st.session_state.include_wiki = True
 
         st.subheader("The below tweet will be posted:")
         
@@ -207,8 +393,12 @@ if show_tweet:
                 include_news=True,
                 include_wiki=False,
                 news_handler=news_handler,
-                wiki_fetcher=False
+                wiki_fetcher=None
             )
+            st.session_state.current_tweet = tweet_text
+            st.session_state.current_topic = topic
+            st.session_state.include_news = True
+            st.session_state.include_wiki = False
 
         st.subheader("The below tweet will be posted:")
         
@@ -232,9 +422,13 @@ if show_tweet:
                 topic,
                 include_news=False,
                 include_wiki=True,
-                news_handler=False,
+                news_handler=None,
                 wiki_fetcher=wiki_fetcher
             )
+            st.session_state.current_tweet = tweet_text
+            st.session_state.current_topic = topic
+            st.session_state.include_news = False
+            st.session_state.include_wiki = True
 
         st.subheader("The below tweet will be posted:")
         
@@ -258,9 +452,13 @@ if show_tweet:
                 topic,
                 include_news=False,
                 include_wiki=False,
-                news_handler=news_handler,
-                wiki_fetcher=wiki_fetcher
+                news_handler=None,
+                wiki_fetcher=None
             )
+            st.session_state.current_tweet = tweet_text
+            st.session_state.current_topic = topic
+            st.session_state.include_news = False
+            st.session_state.include_wiki = False
 
         st.subheader("The below tweet will be posted:")
         
@@ -278,6 +476,15 @@ st.sidebar.info(
     "Choose a topic, select enhancement options, and start the posting agent."
 )
 st.sidebar.markdown("© 2025 Twitter Posting Agent - Design by Aranya Ray")
+
+# Add auto-refresh for the timer near the top of your file
+if st.session_state.scheduler_active and st.session_state.next_tweet_time:
+    st.write(
+        """
+        <meta http-equiv="refresh" content="10">
+        """,
+        unsafe_allow_html=True
+    )
 
 
 
